@@ -7,7 +7,7 @@ import time
 ## Logging settings ""
 
 FILENAME = "cincopi_startfrom_"
-WRITE_FREQUENCY = 100
+WRITE_FREQUENCY = 15
 
 ## LED array data ##
 
@@ -172,6 +172,8 @@ else:
     filename = FILENAME + "-" + str(datetime.now()) + ".csv"
     
 file_setup(filename)
+
+prev_min = datetime.now().minute
     
         
 while True:
@@ -187,9 +189,15 @@ while True:
         send_info(temp, humi, hi)
     except:
         print("server not found")
-    # Append time to sense data and log
-    sense_data.append(datetime.now())
-    log_data()
+    # Only record data once per minute
+    min_now = datetime.now().minute
+    if min_now != prev_min:
+        # Append time to sense data and log
+        sense_data.append(datetime.now())
+        log_data()
+        prev_min = min_now
+    # Write down the logged data into a file every WRITE_FREQ mins 
+    # since we are logging data once every minute
     if len(batch_data) >  WRITE_FREQUENCY:
         print("Writing to file")
         with open(filename, "a") as f:
