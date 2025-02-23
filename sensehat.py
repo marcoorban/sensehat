@@ -1,13 +1,19 @@
 from sense_hat import SenseHat, ACTION_PRESSED, ACTION_HELD, ACTION_RELEASED
 from signal import pause
 from datetime import datetime
+import os
 import requests
 import time
 
 ## Logging settings ""
 
-FILENAME = "cincopi_startfrom_"
+csvname = "cincopi_startfrom_"
+basedir = os.path.abspath(os.path.dirname(__file__))
+FILENAME = os.path.join(basedir, csvname)
 WRITE_FREQUENCY = 15
+
+SITE = "http://127.0.0.1:8000/monitor"
+POST_URL = "http://127.0.0.1:8000/post_data"
 
 ## LED array data ##
 
@@ -53,7 +59,7 @@ happy = [
     O, O, O, O, O, O, O, O,
     ]
 
-SITE = "http://127.0.0.1:5000/"
+
     
 
 def calculate_heat_index(temperature, humidity):
@@ -141,9 +147,16 @@ def pushed_up(event):
 def refresh():
     get_sense_data()
     
-def send_info(temp, humi, hi):
-    payload = {'temp':temp, 'humi':humi, 'hi':hi}
-    r = requests.get(SITE, params=payload)
+def send_info():
+    measurement = {'temperature': temp,
+            'humidity': humi,
+            'heat_index': hi,
+            'pressure':pressure,
+            'time':datetime.now(),
+            'sensor':'Sensehat'
+            }
+    r = requests.get(SITE, params=measurement)
+    
     print(r.text)
     
 def file_setup(filename):
@@ -155,6 +168,18 @@ def file_setup(filename):
 def log_data():
     output_string = ",".join(str(value) for value in sense_data)
     batch_data.append(output_string)
+    
+def post_data():
+    measurement = {'temperature': temp,
+            'humidity': humi,
+            'heat_index': hi,
+            'pressure':pressure,
+            'time':datetime.now(),
+            'sensor':'Sensehat'
+            }
+    x = requests.post(POST_URL, json=measurement)
+    
+    print(x.text)
     
 ##### Main Program #####
 
@@ -183,7 +208,8 @@ while True:
     sense_data = get_sense_data()
     temp = sense_data[0]
     humi = sense_data[1]
-    hi = sense_data[2]
+    hi = sense_data[2],
+    pressure = sense_data[3]
     # Send data to server
     try:
         send_info(temp, humi, hi)
@@ -195,6 +221,11 @@ while True:
         # Append time to sense data and log
         sense_data.append(datetime.now())
         log_data()
+        # Also post data to server for logging in its database
+        try:
+            post_data()
+        except:
+            pass
         prev_min = min_now
     # Write down the logged data into a file every WRITE_FREQ mins 
     # since we are logging data once every minute
