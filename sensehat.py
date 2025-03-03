@@ -59,9 +59,9 @@ happy = [
     O, O, O, O, O, O, O, O,
     ]
 
-
+COLD = 22
+HOT = 28
     
-
 def calculate_heat_index(temperature, humidity):
     """
     Calculate the heat index given the temperature (in Fahrenheit) and relative humidity (in percentage).
@@ -99,13 +99,13 @@ def calculate_heat_index(temperature, humidity):
     heat_index = (heat_index - 32) * 5/9
     return round(heat_index, 2)
 
-def temp_status(hi):
+def draw_screen(hi):
     
     if screen_on:
-        if hi < 20:
+        if hi < COLD:
             sense.set_pixels(snowflake)
         
-        elif hi > 26: 
+        elif hi > HOT: 
             sense.set_pixels(flame)
         
         else:
@@ -147,7 +147,7 @@ def pushed_up(event):
 def refresh():
     get_sense_data()
     
-def send_info():
+def send_data():
     measurement = {'temperature': temp,
             'humidity': humi,
             'heat_index': hi,
@@ -208,24 +208,20 @@ while True:
     sense_data = get_sense_data()
     temp = sense_data[0]
     humi = sense_data[1]
-    hi = sense_data[2],
+    hi = sense_data[2]
     pressure = sense_data[3]
-    # Send data to server
-    try:
-        send_info(temp, humi, hi)
-    except:
-        print("server not found")
+
     # Only record data once per minute
     min_now = datetime.now().minute
     if min_now != prev_min:
         # Append time to sense data and log
         sense_data.append(datetime.now())
         log_data()
-        # Also post data to server for logging in its database
+        # Also send data to server for logging in its database
         try:
-            post_data()
+            send_data()
         except:
-            pass
+            print("server not found")
         prev_min = min_now
     # Write down the logged data into a file every WRITE_FREQ mins 
     # since we are logging data once every minute
@@ -237,7 +233,7 @@ while True:
             batch_data = []
     ########## Screen ###########
     # Change image according to sensedata
-    temp_status(hi)
+    draw_screen(hi)
     # Pause for integrating light values
     time.sleep(3 * sense.colour.integration_time)
     # Get brightness from enviornment.
