@@ -5,7 +5,7 @@ import os
 import requests
 import time
 
-## Logging settings ""
+# Logging settings 
 
 csvname = "cincopi_startfrom_"
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -148,6 +148,9 @@ def refresh():
     get_sense_data()
     
 def send_data():
+    """ Sends measurement data to the monitor website as a get request. The monitor
+    site is only responsible for displaying the data, and so it will receive
+    measurements fairly continuously """
     measurement = {'temperature': temp,
             'humidity': humi,
             'heat_index': hi,
@@ -157,8 +160,24 @@ def send_data():
             }
     r = requests.get(SITE, params=measurement)
     
-    print(r.text)
-    
+def post_data():
+    """ Sends measurement data to the server, but as a post request. This time it sends the data
+    as a post request, and the server will save the measurement to the database. This function
+    should not be called as often as to not save too much information to the database. Once every
+    five or ten minutes should be enough """
+    now = datetime.now()
+    if now.minute % 10 == 0: # Post every ten minutes
+        measurement = {'temperature': temp,
+                'humidity': humi,
+                'heat_index': hi,
+                'pressure':pressure,
+                'time':datetime.now(),
+                'sensor':'Sensehat'
+                }
+        x = requests.post(POST_URL, data=measurement)
+    else:
+        return
+        
 def file_setup(filename):
     header = ["temperature", "humidity", "heat_index", "pressure", "datetime"]
     
@@ -169,18 +188,7 @@ def log_data():
     output_string = ",".join(str(value) for value in sense_data)
     batch_data.append(output_string)
     
-def post_data():
-    measurement = {'temperature': temp,
-            'humidity': humi,
-            'heat_index': hi,
-            'pressure':pressure,
-            'time':datetime.now(),
-            'sensor':'Sensehat'
-            }
-    x = requests.post(POST_URL, json=measurement)
-    
-    print(x.text)
-    
+   
 ##### Main Program #####
 
    
@@ -220,6 +228,7 @@ while True:
         # Also send data to server for logging in its database
         try:
             send_data()
+            post_data()
         except:
             print("server not found")
         prev_min = min_now
