@@ -5,15 +5,7 @@ import os
 import requests
 import time
 
-# Logging settings 
-
-csvname = "cincopi_startfrom_"
-basedir = os.path.abspath(os.path.dirname(__file__))
-FILENAME = os.path.join(basedir, csvname)
-WRITE_FREQUENCY = 15
-
-SITE = "http://127.0.0.1:8000/monitor"
-POST_URL = "http://127.0.0.1:8000/post_data"
+SITE = "http://127.0.0.1:8000/post_data/"
 
 ## LED array data ##
 
@@ -60,7 +52,7 @@ happy = [
     ]
 
 COLD = 22
-HOT = 28
+HOT = 33
     
 def calculate_heat_index(temperature, humidity):
     """
@@ -159,55 +151,17 @@ def send_data():
             'sensor':'Sensehat'
             }
     r = requests.get(SITE, params=measurement)
-    
-def post_data():
-    """ Sends measurement data to the server, but as a post request. This time it sends the data
-    as a post request, and the server will save the measurement to the database. This function
-    should not be called as often as to not save too much information to the database. Once every
-    five or ten minutes should be enough """
-    now = datetime.now()
-    if now.minute % 10 == 0: # Post every ten minutes
-        measurement = {'temperature': temp,
-                'humidity': humi,
-                'heat_index': hi,
-                'pressure':pressure,
-                'time':datetime.now(),
-                'sensor':'Sensehat'
-                }
-        x = requests.post(POST_URL, data=measurement)
-    else:
-        return
-        
-def file_setup(filename):
-    header = ["temperature", "humidity", "heat_index", "pressure", "datetime"]
-    
-    with open(filename, "w") as f:
-        f.write(",".join(str(value) for value in header) + "\n")
-        
-def log_data():
-    output_string = ",".join(str(value) for value in sense_data)
-    batch_data.append(output_string)
-    
+   
    
 ##### Main Program #####
 
    
 sense = SenseHat()
-batch_data = []
+prev_min = datetime.now().minute
 
 sense.color.gain = 64
 sense.color.integration_cycles = 256
-screen_on = True
-
-if FILENAME == "":
-    filename = "SenseLog-" + str(datetime.now()) + ".csv"
-else:
-    filename = FILENAME + "-" + str(datetime.now()) + ".csv"
-    
-file_setup(filename)
-
-prev_min = datetime.now().minute
-    
+screen_on = True  
         
 while True:
     ######## Sensor data ###########
@@ -222,24 +176,12 @@ while True:
     # Only record data once per minute
     min_now = datetime.now().minute
     if min_now != prev_min:
-        # Append time to sense data and log
-        sense_data.append(datetime.now())
-        log_data()
-        # Also send data to server for logging in its database
         try:
             send_data()
-            post_data()
         except:
             print("server not found")
         prev_min = min_now
-    # Write down the logged data into a file every WRITE_FREQ mins 
-    # since we are logging data once every minute
-    if len(batch_data) >  WRITE_FREQUENCY:
-        print("Writing to file")
-        with open(filename, "a") as f:
-            for line in batch_data:
-                f.write(line + "\n")
-            batch_data = []
+
     ########## Screen ###########
     # Change image according to sensedata
     draw_screen(hi)
